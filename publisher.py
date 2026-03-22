@@ -15,7 +15,6 @@ import subprocess
 import textwrap
 from datetime import date
 
-from agent.selector import Selection
 
 DOCS_DIR   = "docs"
 VIDEO_NAME = "latest.mp4"
@@ -53,9 +52,11 @@ def _stage_video(src: str) -> None:
 
 # ── HTML generation ────────────────────────────────────────────────────────────
 
-def _render_html(sel: Selection, display_date: str) -> str:
-    effects_str = ", ".join(sel.effects) if sel.effects else "none"
-    theme_str   = sel.theme.title() if sel.theme else "Daily Window"
+def _render_html(display_date: str, title: str, poem_text: str) -> str:
+    # Escape HTML special chars and preserve line breaks in poem
+    import html as _html
+    safe_title = _html.escape(title)
+    safe_poem  = "<br>".join(_html.escape(line) for line in poem_text.splitlines())
 
     return textwrap.dedent(f"""\
         <!DOCTYPE html>
@@ -70,7 +71,7 @@ def _render_html(sel: Selection, display_date: str) -> str:
               width: 100%; height: 100%;
               background: #000;
               overflow: hidden;
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+              font-family: Georgia, "Times New Roman", serif;
             }}
             video {{
               position: fixed;
@@ -83,31 +84,31 @@ def _render_html(sel: Selection, display_date: str) -> str:
               position: fixed;
               bottom: 0; left: 0; right: 0;
               padding: 2.5rem 3rem;
-              background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+              background: linear-gradient(to top, rgba(0,0,0,0.80) 0%, transparent 100%);
               color: #fff;
               pointer-events: none;
             }}
             .date {{
-              font-size: clamp(0.75rem, 1.5vw, 1rem);
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+              font-size: clamp(0.65rem, 1.2vw, 0.85rem);
               font-weight: 300;
-              letter-spacing: 0.18em;
+              letter-spacing: 0.2em;
               text-transform: uppercase;
-              opacity: 0.7;
-              margin-bottom: 0.5rem;
+              opacity: 0.6;
+              margin-bottom: 0.6rem;
             }}
-            .theme {{
-              font-size: clamp(1.8rem, 5vw, 3.5rem);
-              font-weight: 600;
-              letter-spacing: -0.01em;
-              line-height: 1.1;
-              margin-bottom: 0.75rem;
-            }}
-            .meta {{
-              font-size: clamp(0.65rem, 1.2vw, 0.8rem);
+            .title {{
+              font-size: clamp(1.6rem, 4vw, 3rem);
               font-weight: 400;
-              opacity: 0.45;
-              letter-spacing: 0.1em;
-              text-transform: uppercase;
+              font-style: italic;
+              line-height: 1.15;
+              margin-bottom: 0.8rem;
+            }}
+            .poem {{
+              font-size: clamp(0.8rem, 1.6vw, 1.05rem);
+              font-weight: 400;
+              line-height: 1.7;
+              opacity: 0.85;
             }}
           </style>
         </head>
@@ -115,8 +116,8 @@ def _render_html(sel: Selection, display_date: str) -> str:
           <video src="{VIDEO_NAME}" autoplay muted loop playsinline></video>
           <div class="overlay">
             <p class="date">{display_date}</p>
-            <p class="theme">{theme_str}</p>
-            <p class="meta">effects: {effects_str} &nbsp;&bull;&nbsp; loop: {sel.loop}</p>
+            <p class="title">{safe_title}</p>
+            <p class="poem">{safe_poem}</p>
           </div>
         </body>
         </html>
@@ -159,15 +160,14 @@ def _push(date_slug: str) -> None:
 
 # ── public entry point ────────────────────────────────────────────────────────
 
-def publish(video_path: str, selection: Selection) -> None:
+def publish(video_path: str, title: str, poem_text: str) -> None:
     """Stage video + HTML to docs/ and push to GitHub Pages."""
     display_date = date.today().strftime("%B %d, %Y")
     date_slug    = date.today().isoformat()
 
-    print("4/4  Publishing to GitHub Pages...")
     _stage_video(video_path)
 
-    html = _render_html(selection, display_date)
+    html = _render_html(display_date, title, poem_text)
     with open(DOCS_INDEX, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"  Generated {DOCS_INDEX}")
