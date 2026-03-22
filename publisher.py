@@ -11,7 +11,6 @@ Git push failures (offline, no remote) are logged but never crash the pipeline.
 """
 
 import os
-import shutil
 import subprocess
 import textwrap
 from datetime import date
@@ -22,7 +21,6 @@ DOCS_DIR   = "docs"
 VIDEO_NAME = "latest.mp4"
 DOCS_VIDEO = os.path.join(DOCS_DIR, VIDEO_NAME)
 DOCS_INDEX = os.path.join(DOCS_DIR, "index.html")
-SIZE_LIMIT = 90 * 1024 * 1024   # 90 MB — safe headroom below GitHub's 100 MB cap
 
 
 # ── video staging ─────────────────────────────────────────────────────────────
@@ -47,13 +45,10 @@ def _compress(src: str, dst: str) -> None:
 def _stage_video(src: str) -> None:
     os.makedirs(DOCS_DIR, exist_ok=True)
     size = os.path.getsize(src)
-    if size > SIZE_LIMIT:
-        print(f"  Video is {size / 1e6:.1f} MB — compressing...")
-        _compress(src, DOCS_VIDEO)
-        print(f"  Compressed to {os.path.getsize(DOCS_VIDEO) / 1e6:.1f} MB → {DOCS_VIDEO}")
-    else:
-        shutil.copy2(src, DOCS_VIDEO)
-        print(f"  Copied {size / 1e6:.1f} MB → {DOCS_VIDEO}")
+    # Always re-encode: cv2's mp4v codec is not browser-compatible; H.264 is required
+    print(f"  Re-encoding {size / 1e6:.1f} MB to H.264 for browser playback...")
+    _compress(src, DOCS_VIDEO)
+    print(f"  → {os.path.getsize(DOCS_VIDEO) / 1e6:.1f} MB saved to {DOCS_VIDEO}")
 
 
 # ── HTML generation ────────────────────────────────────────────────────────────
